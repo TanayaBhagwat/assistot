@@ -1,0 +1,48 @@
+version: '3'
+services:
+
+  web:
+    container_name: flask_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - mysql
+    restart: always
+    stdin_open: true
+    tty: true
+    networks:
+      - demonetwork
+
+  mysql:
+    image: mysql/mysql-server:latest
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: bot
+      MYSQL_ROOT_PASSWORD: cisco.123
+      MYSQL_USER: root
+      MYSQL_ROOT_HOST: 0.0.0.0
+      MYSQL_PASSWORD: cisco.123
+      MYSQL_PORT: 3306
+    networks:
+      - demonetwork
+    expose:
+      - "3306"
+
+  nginx:
+    build:
+      context: nginx
+      dockerfile: Dockerfile
+    ports:
+      - 8080:80
+    depends_on:
+      - web
+    networks:
+      - demonetwork
+    restart: "on-failure"
+
+networks:
+  demonetwork:
+    external: false

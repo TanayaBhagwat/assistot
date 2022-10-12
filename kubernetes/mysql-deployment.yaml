@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --controller deployment --out kubernetes/
+    kompose.version: 1.26.0 (40646f47)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: mysql
+  name: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --controller deployment --out kubernetes/
+        kompose.version: 1.26.0 (40646f47)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/demonetwork: "true"
+        io.kompose.service: mysql
+    spec:
+      containers:
+        - env:
+            - name: MYSQL_DATABASE
+              value: bot
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+            - name: MYSQL_PORT
+              value: "3306"
+            - name: MYSQL_ROOT_HOST
+              value: 0.0.0.0
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+            - name: MYSQL_USER
+              value: root
+          image: mysql/mysql-server:latest
+          name: mysql
+          ports:
+            - containerPort: 3306
+          resources: {}
+          volumeMounts:
+          - name: mysql-persistent-storage
+            mountPath: /var/lib/mysql
+          imagePullPolicy: Always
+      volumes:
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: mysql-pvc-v2
+status: {}

@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --controller deployment --out kubernetes/
+    kompose.version: 1.26.0 (40646f47)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: nginx
+  name: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      io.kompose.service: nginx
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --controller deployment --out kubernetes/
+        kompose.version: 1.26.0 (40646f47)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/demonetwork: "true"
+        io.kompose.service: nginx
+    spec:
+      containers:
+        - image: schachad/nginx
+          name: nginx
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: 500m
+            requests:
+              cpu: 200m
+          imagePullPolicy: Always
+      restartPolicy: Always
+status: {}
