@@ -116,7 +116,7 @@ class Bot():
             return
 
         task_data['message_id'] = data['id']
-        required = ['task', 'priority', 'state', 'task_id', 'due']
+        required = ['task', 'priority', 'task_id']
         valid_task = all([x in task_data for x in required])
         if not valid_task:
             self.send_message(
@@ -124,13 +124,14 @@ class Bot():
             return
 
         try:
-            duedate = datetime.datetime.strptime(task_data['due'], "%d/%m/%y %H:%M:%S")
+            duedate = datetime.datetime.strptime(task_data['due'], "%d/%m/%y %H:%M:%S") if task_data.get('due') else None
         except ValueError:
             self.send_message(
                 "Invalid date format for due date. Please specify the due date in following format: dd/mm/yy HH:MM:SS")
             return
 
         task_data['due'] = duedate
+        task_data['state'] = task_data.get('state', 'initial')
         tasks_object = TodoManager(self.user)
         task_ids = [x['taskid'] for x in tasks_object.tasks]
         if self.user['username'] + '_' + task_data['task_id'] in task_ids:
@@ -144,11 +145,24 @@ class Bot():
         pass
 
     def remove_task(self, data, message):
-        pass
+        task_data = message.split('remove task')[1].strip()
+        if not task_data:
+            self.send_message(
+                "Valid parameters not passed to the command. Please refer to help to see how to use the commands")
+            return
+        task_object = TodoManager(self.user)
+        result = task_object.delete_task(task_data)
+        if result == None:
+            self.send_message(f"No task exists with task id: {task_data}")
+            return
+        if result == False:
+            self.send_message(f"Failed to delete task: {task_data}")
+        else:
+            self.send_message(f"Removed task: {task_data}")
 
     def list_tasks(self, data, message):
         tasks_object = TodoManager(self.user)
-        self_tasks, manager_tasks = tasks_object._get_markdown_table(self.api, data)
+        self_tasks, manager_tasks = tasks_object._get_markdown_table()
         self_text = 'Your tasks:\n```\n'+self_tasks+'\n```' if self_tasks else "No tasks exist"
         man_text = f'\n\nManager assigned tasks:\n```\n'+manager_tasks+'\n```' if manager_tasks else ""
         self.api.messages.create(markdown=self_text+man_text,

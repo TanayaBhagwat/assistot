@@ -1,3 +1,4 @@
+from datetime import datetime
 from functools import reduce
 
 from app.db import db
@@ -51,6 +52,7 @@ class Todo(db.Model):
     taskid = db.Column(db.String(200), default=None)
     createtime = db.Column(db.DateTime, default=None)
     duetime = db.Column(db.DateTime, default=None)
+    dtime = db.Column(db.DateTime, default=None)
     mtime = db.Column(db.DateTime, default=None)
     timesmodified = db.Column(db.Integer, default=0)
 
@@ -61,6 +63,7 @@ class Todo(db.Model):
                                   Todo.state, Todo.taskid, Todo.createtime, Todo.duetime, Todo.mtime,
                                   Todo.timesmodified).filter(
             Todo.owner == user,
+            Todo.dtime.is_(None)
         ).all()
 
         tasks = []
