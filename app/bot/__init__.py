@@ -1,6 +1,6 @@
 import datetime
 import logging
-
+import re
 from app.bot.todo import TodoManager
 from app.routes.config import LOGGER_CONFIG
 from app.bot.user import UserManager
@@ -24,10 +24,10 @@ class Bot():
         logger.debug("Validated User")
 
         self.supported_commands = {
-            'add task': self.add_task,
-            'remove task': self.remove_task,
-            'list tasks': self.list_tasks,
-            'modify task': self.modify_task,
+            'add (?:task|item)': self.add_task,
+            '(?:remove|delete) (?:task|item)': self.remove_task,
+            'list (?:tasks|task|items|item)': self.list_tasks,
+            '(?:modify|change) (?:tasks|task)': self.modify_task,
             'help': self.help,
             'about': self.about,
             'show version': self.show_version_number
@@ -51,8 +51,11 @@ class Bot():
         message = self.api.messages.get(data['id']).text
         func = None
         for i, command in enumerate(self.supported_commands):
-            if message.startswith(command):
+            pattern = re.search(f'({command})', message)
+            pattern = getattr(pattern, 'groups', lambda: None)()
+            if pattern and len(pattern) >= 1 and pattern[0]:
                 func = command
+                break
 
         if func:
             self.supported_commands[func](data, message)
@@ -64,6 +67,7 @@ class Bot():
                 if not priv:
                     return
                 func = command
+                break
         if func:
             self.manager_commands[func](data, message)
             return
@@ -74,6 +78,7 @@ class Bot():
                 if not priv:
                     return
                 func = command
+                break
         if func:
             self.supported_admin_commands[func](data, message)
 
@@ -103,7 +108,8 @@ class Bot():
 
     def add_task(self, data, message):
         # add task task=name; priority=low; state=initial;
-        task_data = message.split('add task')[1]
+        # task_data = message.split('add task')[1]
+        task_data = re.sub('add (?:task|item)\s', '', message)
         if not task_data:
             self.send_message(
                 "Valid parameters not passed to the command. Please refer to help to see how to use the commands")
@@ -133,7 +139,7 @@ class Bot():
         task_data['due'] = duedate
         task_data['state'] = task_data.get('state', 'initial')
         tasks_object = TodoManager(self.user)
-        task_ids = [x['taskid'] for x in tasks_object.tasks]
+        task_ids = [x['task_id'] for x in tasks_object.tasks]
         if self.user['username'] + '_' + task_data['task_id'] in task_ids:
             self.send_message(f"Task id {task_data['task_id']} already exists, please choose a unique task id")
             return
@@ -145,10 +151,11 @@ class Bot():
         pass
 
     def remove_task(self, data, message):
-        task_data = message.split('remove task')[1].strip()
+        # task_data = message.split('remove task')[1].strip()
+        task_data = re.sub('(?:remove|delete) (?:task|item)\s', '', message)
         if not task_data:
             self.send_message(
-                "Valid parameters not passed to the command. Please refer to help to see how to use the commands")
+                "Invalid input. Specify a task id to delete")
             return
         task_object = TodoManager(self.user)
         result = task_object.delete_task(task_data)
@@ -169,7 +176,48 @@ class Bot():
                                  roomId=self.data['roomId'])
 
     def modify_task(self, data, message):
-        pass
+        task_data = re.sub('(?:modify|change) (?:tasks|task)\s', '', message)
+        if not task_data:
+            self.send_message(
+                "Valid parameters not passed to the command. Please refer to help to see how to use the commands")
+            return
+        try:
+            task_data = {a.split('=')[0].strip(): a.split('=')[1].strip() for a in task_data.split(';')}
+        except IndexError:
+            self.send_message(
+                "Valid parameters not passed to the command. Please refer to help to see how to use the commands")
+            return
+
+        required = ['task_id']
+        valid_task = all([x in task_data for x in required])
+        if not valid_task:
+            self.send_message(
+                f"Valid parameters not passed to the command. following parameters are required: {', '.join(required)}")
+            return
+
+        try:
+            duedate = datetime.datetime.strptime(task_data['due'], "%d/%m/%y %H:%M:%S") if task_data.get('due') else None
+        except ValueError:
+            self.send_message(
+                "Invalid date format for due date. Please specify the due date in following format: dd/mm/yy HH:MM:SS")
+            return
+
+        if duedate:
+            task_data['due'] = duedate
+        task_id = task_data['task_id']
+        del task_data['task_id']
+        tasks_object = TodoManager(self.user)
+        valid_params = all([x in tasks_object.permitted_fields for x in task_data])
+        if not valid_params:
+            self.send_message(f"Valid parameters were not passed to the command. Permitted keys are: {', '.join(tasks_object.permitted_fields)}")
+            return
+        task_ids = [x['task_id'] for x in tasks_object.tasks]
+        if self.user['username'] + '_' + task_id not in task_ids:
+            self.send_message(f"Task id {task_id} does not exist, please run 'list tasks' to see existing tasks")
+            return
+
+        tasks_object.modify_task(task_id, task_data)
+        self.send_message(f"Task `{task_id}` modified successfully")
 
     def list_tasks_from_reportees(self, data, message):
         pass

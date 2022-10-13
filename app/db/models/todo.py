@@ -28,9 +28,9 @@ class TodoSchema(Schema):
     todo = fields.String(required=True)
     priority = fields.String(required=True)
     state = fields.String(required=True)
-    taskid = fields.String(required=True)
+    task_id = fields.String(required=True)
     createtime = fields.DateTime()
-    duetime = fields.DateTime(allow_none=True)
+    due = fields.DateTime(allow_none=True)
     mtime = fields.DateTime(dump_default=None)
     timesmodified = fields.Integer()
 
@@ -46,12 +46,12 @@ class Todo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     owner = db.Column(db.String(25))
     submitter = db.Column(db.String(25), default=None)
-    todo_item = db.Column(db.String(250), default=None)
+    task = db.Column(db.String(250), default=None)
     priority = db.Column(Enum(PriorityEnum), default='low')
     state = db.Column(Enum(StateEnum), default='initial')
-    taskid = db.Column(db.String(200), default=None)
+    task_id = db.Column(db.String(200), default=None)
     createtime = db.Column(db.DateTime, default=None)
-    duetime = db.Column(db.DateTime, default=None)
+    due = db.Column(db.DateTime, default=None)
     dtime = db.Column(db.DateTime, default=None)
     mtime = db.Column(db.DateTime, default=None)
     timesmodified = db.Column(db.Integer, default=0)
@@ -59,8 +59,8 @@ class Todo(db.Model):
     @classmethod
     def fetch_tasks(cls, user, custom_fields=False):
 
-        fetch = app.session.query(Todo.owner, Todo.submitter, Todo.todo_item, Todo.priority,
-                                  Todo.state, Todo.taskid, Todo.createtime, Todo.duetime, Todo.mtime,
+        fetch = app.session.query(Todo.owner, Todo.submitter, Todo.task, Todo.priority,
+                                  Todo.state, Todo.task_id, Todo.createtime, Todo.due, Todo.mtime,
                                   Todo.timesmodified).filter(
             Todo.owner == user,
             Todo.dtime.is_(None)
@@ -130,7 +130,7 @@ class Todo(db.Model):
         query = app.session.query(*fields)
         results = query.filter(*where).all()
         results = [row._asdict() for row in results]
-        if 'taskid' not in excluded_fields:
+        if 'task_id' not in excluded_fields:
             results = sanitise_task_id(results)
         return results
 
@@ -190,5 +190,5 @@ def unpack_fields(obj, join=False, excluded_fields=[]):
 
 def sanitise_task_id(data):
     for x in data:
-        x['taskid'] = x['taskid'].split('_', 1)[1]
+        x['task_id'] = x['task_id'].split('_', 1)[1]
     return data
