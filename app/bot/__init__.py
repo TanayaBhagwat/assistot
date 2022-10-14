@@ -1,6 +1,9 @@
 import datetime
 import logging
 import re
+
+from tabulate import tabulate
+
 from app.bot.todo import TodoManager
 from app.routes.config import LOGGER_CONFIG
 from app.bot.user import UserManager
@@ -24,9 +27,9 @@ class Bot():
         logger.debug("Validated User")
 
         self.supported_commands = {
-            'add (?:task|item)': self.add_task,
+            '^add (?:task|item)': self.add_task,
             '(?:remove|delete) (?:task|item)': self.remove_task,
-            'list (?:tasks|task|items|item)': self.list_tasks,
+            '^list (?:tasks|task|items|item)': self.list_tasks,
             '(?:modify|change) (?:tasks|task)': self.modify_task,
             'help': self.help,
             'about': self.about,
@@ -41,8 +44,8 @@ class Bot():
         }
 
         self.manager_commands = {
-            'add task to reportees': self.add_task_to_reportees,
-            'list tasks from reportees': self.list_tasks_from_reportees,
+            '^reportees add task': self.add_task_to_reportees,
+            '^reportees list tasks': self.list_tasks_from_reportees,
             'remove task from reportees': self.remove_task_from_reportees,
             'modify task from reportees': self.modify_task_from_reportees
         }
@@ -62,7 +65,9 @@ class Bot():
             return
 
         for i, command in enumerate(self.manager_commands):
-            if message.startswith(command):
+            pattern = re.search(f'({command})', message)
+            pattern = getattr(pattern, 'groups', lambda: None)()
+            if pattern and len(pattern) >= 1 and pattern[0]:
                 priv = self.validate_manager(data)
                 if not priv:
                     return
@@ -73,7 +78,9 @@ class Bot():
             return
 
         for i, command in enumerate(self.supported_admin_commands):
-            if message.startswith(command):
+            pattern = re.search(f'({command})', message)
+            pattern = getattr(pattern, 'groups', lambda: None)()
+            if pattern and len(pattern) >= 1 and pattern[0]:
                 priv = self.validate_admin(data)
                 if not priv:
                     return
@@ -148,6 +155,42 @@ class Bot():
         self.send_message(f"Task `{task_data['task']}` added successfully")
 
     def add_task_to_reportees(self, data, message):
+        task_data = re.sub('reportees add task\s', '', message)
+        if not task_data:
+            self.send_message(
+                "Valid parameters not passed to the command. Please refer to help to see how to use the commands")
+            return
+        try:
+            task_data = {a.split('=')[0].strip(): a.split('=')[1].strip() for a in task_data.split(';')}
+        except IndexError:
+            self.send_message(
+                "Valid parameters not passed to the command. Please refer to help to see how to use the commands")
+            return
+
+        task_data['message_id'] = data['id']
+        required = ['task', 'priority', 'task_id']
+        valid_task = all([x in task_data for x in required])
+        if not valid_task:
+            self.send_message(
+                "Valid parameters not passed to the command. Please refer to help to see how to use the commands")
+            return
+
+        try:
+            duedate = datetime.datetime.strptime(task_data['due'], "%d/%m/%y %H:%M:%S") if task_data.get(
+                'due') else None
+        except ValueError:
+            self.send_message(
+                "Invalid date format for due date. Please specify the due date in following format: dd/mm/yy HH:MM:SS")
+            return
+
+        task_data['due'] = duedate
+        task_data['state'] = task_data.get('state', 'initial')
+        tasks_object = TodoManager(self.user)
+        reportees_task = tasks_object.get_reportees_tasks()
+        task_ids = [x['task_id'] for x in tasks_object.tasks]
+        if self.user['username'] + '_' + task_data['task_id'] in task_ids:
+            self.send_message(f"Task id {task_data['task_id']} already exists, please choose a unique task id")
+            return
         pass
 
     def remove_task(self, data, message):
@@ -220,7 +263,18 @@ class Bot():
         self.send_message(f"Task `{task_id}` modified successfully")
 
     def list_tasks_from_reportees(self, data, message):
-        pass
+        tasks_object = TodoManager(self.user)
+        reportees_task, individual_task = tasks_object.get_reportees_tasks()
+        message = """Group tasks\n"""
+        group_tab = tabulate(reportees_task.values(), headers='keys', tablefmt="github")
+        message = message + '```\n' + group_tab + '\n```\n'
+
+        for owner in individual_task:
+            i_tab = tabulate(individual_task[owner], headers='keys', tablefmt='github')
+            message = message + f'task owner: {owner}\n```\n' + i_tab + '\n```\n'
+
+        self.api.messages.create(markdown=message,
+                                 roomId=self.data['roomId'])
 
     def help(self):
         pass

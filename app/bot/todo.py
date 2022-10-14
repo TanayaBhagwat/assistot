@@ -1,6 +1,7 @@
 from datetime import datetime
 from sqlalchemy import exc
 from app.db.models.todo import Todo
+from app.db.models.user import User
 from flask import current_app as app
 from tabulate import tabulate
 
@@ -16,7 +17,7 @@ class TodoManager:
         newdata = Todo(owner=owner, submitter=submitter, task=task['task'],
                        priority=task['priority'], state=task['state'], task_id=f'{submitter}_{task["task_id"]}',
                        createtime=datetime.now(), due=task['due'], dtime=None,
-                       mtime=datetime.now(), timesmodified=0)
+                       mtime=datetime.now(), timesmodified=0, isgroupitem=task.get('isgroupitem', False))
 
         app.session.add(newdata)
 
@@ -68,6 +69,10 @@ class TodoManager:
             app.session.rollback()
             return False
         return True
+
+    def get_reportees_tasks(self):
+        group_tasks, individual_tasks = Todo.get_reportees_tasks(self.user['username'])
+        return group_tasks, individual_tasks
 
     def _get_markdown_table(self):
         tasks = Todo._fetch_all_where(Todo.owner == self.user['username'], Todo.dtime.is_(None), excluded_fields=['mtime', 'id', 'dtime'])

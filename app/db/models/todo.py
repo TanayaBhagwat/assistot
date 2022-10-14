@@ -2,13 +2,14 @@ from datetime import datetime
 from functools import reduce
 
 from app.db import db
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, missing
 from sqlalchemy import Enum
 from flask import current_app as app
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from webargs import ValidationError
 import enum
 
+from app.db.models.user import User
 
 
 class StateEnum(enum.Enum):
@@ -33,6 +34,7 @@ class TodoSchema(Schema):
     due = fields.DateTime(allow_none=True)
     mtime = fields.DateTime(dump_default=None)
     timesmodified = fields.Integer()
+    isgroupitem = fields.Boolean()
 
     # class Meta:
     #     fields = ("url",)
@@ -55,6 +57,7 @@ class Todo(db.Model):
     dtime = db.Column(db.DateTime, default=None)
     mtime = db.Column(db.DateTime, default=None)
     timesmodified = db.Column(db.Integer, default=0)
+    isgroupitem = db.Column(db.Boolean, default=False)
 
     @classmethod
     def fetch_tasks(cls, user, custom_fields=False):
@@ -166,6 +169,50 @@ class Todo(db.Model):
                     "Must choose at least one field from main table", 400)
         results = query.all()
         return [row._asdict() for row in results]
+
+    @classmethod
+    def get_reportees_tasks(cls, user):
+        tasks = app.session.query(Todo.owner,
+                                  Todo.task_id,
+                                  Todo.task,
+                                  Todo.state,
+                                  Todo.priority,
+                                  Todo.createtime,
+                                  Todo.due,
+                                  Todo.timesmodified,
+                                  Todo.isgroupitem
+                                  ).join(User,
+                                         Todo.owner == User.username
+                                         ).filter(Todo.submitter == user,
+                                                  Todo.owner != user,
+                                                  User.manager_id == user,
+                                                  Todo.dtime.is_(None)
+                                                  ).all()
+
+        results = [row._asdict() for row in tasks]
+        results = sanitise_task_id(results)
+        task_dict_group = dict()
+        task_dict_individual = dict()
+        for task in results:
+            owner = task['owner']
+            groupitem = task['isgroupitem']
+            task['state'] = task['state'].name
+            task['priority'] = task['priority'].name
+            del task['owner']
+            del task['isgroupitem']
+
+            if groupitem:
+                if task['task_id'] in task_dict_group:
+                    task_dict_group[task['task_id']]['belongs to'] += f", {owner}"
+                else:
+                    task_dict_group[task['task_id']] = task
+                    task_dict_group[task['task_id']]['belongs to'] = f"{owner}"
+            else:
+                if owner in task_dict_individual:
+                    task_dict_individual[owner].append(task)
+                else:
+                    task_dict_individual[owner] = [task]
+        return task_dict_group, task_dict_individual
 
 
 def unpack_fields(obj, join=False, excluded_fields=[]):
