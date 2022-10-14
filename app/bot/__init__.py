@@ -2,7 +2,7 @@ import datetime
 import logging    # for tracking events that happen 
 import re
 
-from tabulate import tabulate
+from tabulate import tabulate    #printing small tables without hassle
 
 from app.bot.todo import TodoManager
 from app.routes.config import LOGGER_CONFIG
