@@ -45,3 +45,17 @@ class User(db.Model):
             users[user['username']] = user
 
         return users
+
+    @classmethod
+    def fetch_reportees(cls, manager_id):
+        fetch = app.session.query(User.username).filter(
+            User.manager_id == manager_id,
+            User.dtime.is_(None)
+        ).all()
+
+        reportees = []
+        for user in fetch:
+            user = user._asdict()
+            reportees.append(user['username'])
+
+        return reportees

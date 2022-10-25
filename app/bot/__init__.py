@@ -14,7 +14,8 @@ class Bot():
         logger = logging.getLogger(LOGGER_CONFIG['NAME'])
         self.api = api
         logger.debug("Validate User")
-        userobject = UserManager(self.api, data=data)
+        user = data['personEmail'].split('@')[0]
+        userobject = UserManager(self.api, user)
         if userobject.user:
             username = [x for x in userobject.user][0]
             self.user = userobject.user[username]
@@ -155,7 +156,7 @@ class Bot():
         self.send_message(f"Task `{task_data['task']}` added successfully")
 
     def add_task_to_reportees(self, data, message):
-        task_data = re.sub('reportees add task\s', '', message)
+        task_data = re.sub('^reportees add task\s', '', message)
         if not task_data:
             self.send_message(
                 "Valid parameters not passed to the command. Please refer to help to see how to use the commands")
@@ -186,12 +187,33 @@ class Bot():
         task_data['due'] = duedate
         task_data['state'] = task_data.get('state', 'initial')
         tasks_object = TodoManager(self.user)
-        reportees_task = tasks_object.get_reportees_tasks()
-        task_ids = [x['task_id'] for x in tasks_object.tasks]
-        if self.user['username'] + '_' + task_data['task_id'] in task_ids:
-            self.send_message(f"Task id {task_data['task_id']} already exists, please choose a unique task id")
+        group_tasks, individual_tasks = tasks_object.get_reportees_tasks()
+        task_ids = dict()
+
+        for task in group_tasks:
+            if task in task_ids:
+                task_data[task].extend(group_tasks[group_tasks[task]['belongs to'].split(',')])
+            else:
+                task_data[task] = group_tasks[task]['belongs to'].split(',')
+
+        for x in individual_tasks:
+            for task in individual_tasks[x]:
+                if task['task_id'] in task_ids:
+                    task_ids[task['task_id']].append(x)
+                else:
+                    task_ids[task['task_id']] = [x]
+
+        if task_data['task_id'] in task_ids:
+            self.send_message(f"Task id {task_data['task_id']} already exists for "
+                              f"{', '.join(task_ids[task_data['task_id']])}, please choose a unique task id")
             return
-        pass
+
+        user = UserManager(self.api, self.user['username'])
+        reportees = user.fetch_reportees(self.user['username'])
+        tasks_object = TodoManager(self.user)
+        for engn in reportees:
+            tasks_object.add_task(task_data, owner=engn, submitter=self.user['username'])
+        self.send_message(f"Task `{task_data['task']}` added successfully for all reportees")
 
     def remove_task(self, data, message):
         # task_data = message.split('remove task')[1].strip()

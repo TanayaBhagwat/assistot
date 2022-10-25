@@ -75,7 +75,7 @@ class TodoManager:
         return group_tasks, individual_tasks
 
     def _get_markdown_table(self):
-        tasks = Todo._fetch_all_where(Todo.owner == self.user['username'], Todo.dtime.is_(None), excluded_fields=['mtime', 'id', 'dtime'])
+        tasks = Todo._fetch_all_where(Todo.owner == self.user['username'], Todo.dtime.is_(None), excluded_fields=['mtime', 'id', 'dtime', 'isgroupitem'])
         self_tasks = [x for x in tasks if x['owner'] == x['submitter']]
         manager_tasks = [x for x in tasks if x not in self_tasks]
 
