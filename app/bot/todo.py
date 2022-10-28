@@ -4,6 +4,7 @@ from app.db.models.todo import Todo
 from app.db.models.user import User
 from flask import current_app as app
 from tabulate import tabulate
+import textwrap
 
 class TodoManager:
     def __init__(self, user):
@@ -95,8 +96,8 @@ class TodoManager:
             x['priority'] = x['priority'].name
             x['state'] = x['state'].name
 
-        self_task_table = tabulate(self_tasks, headers='keys', tablefmt="github")
-        manager_task_table = tabulate(manager_tasks, headers='keys', tablefmt="github")
+        self_task_table = tabulate(self_tasks, headers='keys', tablefmt="grid")
+        manager_task_table = tabulate(manager_tasks, headers='keys', tablefmt="grid")
         return self_task_table, manager_task_table
 
     def reportees_modify_task(self, task_id, data):

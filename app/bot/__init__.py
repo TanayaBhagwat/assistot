@@ -292,7 +292,7 @@ class Bot():
         message = ""
         if reportees_task:
             message = """### Group tasks\n"""
-            group_tab = tabulate(reportees_task.values(), headers='keys', tablefmt="github")
+            group_tab = tabulate(reportees_task.values(), headers='keys', tablefmt="grid")
             message = message + '```\n' + group_tab + '\n```\n'
         else:
             message = """### No Group tasks exist\n"""
@@ -300,7 +300,7 @@ class Bot():
         if individual_task:
             message += """### Individual tasks:\n"""
         for owner in individual_task:
-            i_tab = tabulate(individual_task[owner], headers='keys', tablefmt='github')
+            i_tab = tabulate(individual_task[owner], headers='keys', tablefmt='grid')
             message = message + f'task owner: {owner}\n```\n' + i_tab + '\n```\n'
 
         self.api.messages.create(markdown=message,
@@ -394,7 +394,7 @@ class Bot():
         message = ""
         if reportees_task:
             message = """### Group tasks:\n"""
-            group_tab = tabulate(reportees_task.values(), headers='keys', tablefmt="github")
+            group_tab = tabulate(reportees_task.values(), headers='keys', tablefmt="grid")
             message = message + '```\n' + group_tab + '\n```\n'
         else:
             message = """### No Group tasks exist\n"""

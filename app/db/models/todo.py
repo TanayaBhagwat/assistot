@@ -1,3 +1,4 @@
+import textwrap
 from datetime import datetime
 from functools import reduce
 
@@ -180,7 +181,8 @@ class Todo(db.Model):
                                   Todo.createtime,
                                   Todo.due,
                                   Todo.timesmodified,
-                                  Todo.isgroupitem
+                                  Todo.isgroupitem,
+                                  User.name
                                   ).join(User,
                                          Todo.owner == User.username
                                          ).filter(Todo.submitter == user,
@@ -195,23 +197,26 @@ class Todo(db.Model):
         task_dict_individual = dict()
         for task in results:
             owner = task['owner']
+            ownername = task['name']
             groupitem = task['isgroupitem']
             task['state'] = task['state'].name
             task['priority'] = task['priority'].name
             del task['owner']
             del task['isgroupitem']
+            del task['name']
 
             if groupitem:
                 if task['task_id'] in task_dict_group:
-                    task_dict_group[task['task_id']]['belongs to'] += f", {owner}"
+                    task_dict_group[task['task_id']]['belongs to'] += f",\n{ownername} ({owner})"
                 else:
                     task_dict_group[task['task_id']] = task
-                    task_dict_group[task['task_id']]['belongs to'] = f"{owner}"
+                    task_dict_group[task['task_id']]['belongs to'] = f"{ownername} ({owner})"
             else:
                 if owner in task_dict_individual:
                     task_dict_individual[owner].append(task)
                 else:
                     task_dict_individual[owner] = [task]
+
         return task_dict_group, task_dict_individual
 
 
