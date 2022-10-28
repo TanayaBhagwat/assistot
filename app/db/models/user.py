@@ -5,6 +5,7 @@ from flask import current_app as app
 
 class UserSchema(Schema):
     user_id = fields.String(required=True)
+    name = fields.String(required=True)
     manager_id = fields.String(required=True)
     ismanager = fields.Boolean(required=True)
     # when user is deleted, dtime value is updated with timestamp. if none, user is active
@@ -26,6 +27,7 @@ class User(db.Model):
     __tablename__ = 'user'
     __schema__ = UserSchema
     username = db.Column(db.String(25), primary_key=True)
+    name = db.Column(db.String(100))
     manager_id = db.Column(db.String(25), default=None)
     ismanager = db.Column(db.Boolean, default=False)
     dtime = db.Column(db.DateTime, default=None)
@@ -34,7 +36,7 @@ class User(db.Model):
     @classmethod
     def fetch_user(cls, username):
         # Query database for the given user
-        fetch = app.session.query(User.username, User.manager_id, User.ismanager).filter(
+        fetch = app.session.query(User.username, User.name, User.manager_id, User.ismanager).filter(
             User.username == username,
             User.dtime.is_(None)
         ).all()
@@ -59,3 +61,6 @@ class User(db.Model):
             reportees.append(user['username'])
 
         return reportees
+
+
+

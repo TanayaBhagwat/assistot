@@ -129,5 +129,5 @@ dmypy.json
 .pyre/
 
 # config files
-config.py
+*/routes/config.py
 .idea/

@@ -139,7 +139,8 @@ class Bot():
             return
 
         try:
-            duedate = datetime.datetime.strptime(task_data['due'], "%d/%m/%y %H:%M:%S") if task_data.get('due') else None
+            duedate = datetime.datetime.strptime(task_data['due'], "%d/%m/%y %H:%M:%S"
+                                                 ) if task_data.get('due') else None
         except ValueError:
             self.send_message(
                 "Invalid date format for due date. Please specify the due date in following format: dd/mm/yy HH:MM:SS")
@@ -263,7 +264,8 @@ class Bot():
             return
 
         try:
-            duedate = datetime.datetime.strptime(task_data['due'], "%d/%m/%y %H:%M:%S") if task_data.get('due') else None
+            duedate = datetime.datetime.strptime(task_data['due'], "%d/%m/%y %H:%M:%S"
+                                                 ) if task_data.get('due') else None
         except ValueError:
             self.send_message(
                 "Invalid date format for due date. Please specify the due date in following format: dd/mm/yy HH:MM:SS")
@@ -276,7 +278,8 @@ class Bot():
         tasks_object = TodoManager(self.user)
         valid_params = all([x in tasks_object.permitted_fields for x in task_data])
         if not valid_params:
-            self.send_message(f"Valid parameters were not passed to the command. Permitted keys are: {', '.join(tasks_object.permitted_fields)}")
+            self.send_message(f"Valid parameters were not passed to the command. "
+                              f"Permitted keys are: {', '.join(tasks_object.permitted_fields)}")
             return
         task_ids = [x['task_id'] for x in tasks_object.tasks]
         if self.user['username'] + '_' + task_id not in task_ids:
@@ -292,7 +295,7 @@ class Bot():
         message = ""
         if reportees_task:
             message = """### Group tasks\n"""
-            group_tab = tabulate(reportees_task.values(), headers='keys', tablefmt="github")
+            group_tab = tabulate(reportees_task.values(), headers='keys', tablefmt="grid")
             message = message + '```\n' + group_tab + '\n```\n'
         else:
             message = """### No Group tasks exist\n"""
@@ -300,7 +303,7 @@ class Bot():
         if individual_task:
             message += """### Individual tasks:\n"""
         for owner in individual_task:
-            i_tab = tabulate(individual_task[owner], headers='keys', tablefmt='github')
+            i_tab = tabulate(individual_task[owner], headers='keys', tablefmt='grid')
             message = message + f'task owner: {owner}\n```\n' + i_tab + '\n```\n'
 
         self.api.messages.create(markdown=message,
@@ -377,7 +380,8 @@ class Bot():
         valid_params = all([x in tasks_object.permitted_fields for x in task_data])
         if not valid_params:
             self.send_message(
-                f"Valid parameters were not passed to the command. Permitted keys are: {', '.join(tasks_object.permitted_fields)}")
+                f"Valid parameters were not passed to the command. "
+                f"Permitted keys are: {', '.join(tasks_object.permitted_fields)}")
             return
 
         status = tasks_object.reportees_modify_task(task_id, task_data)
@@ -394,7 +398,7 @@ class Bot():
         message = ""
         if reportees_task:
             message = """### Group tasks:\n"""
-            group_tab = tabulate(reportees_task.values(), headers='keys', tablefmt="github")
+            group_tab = tabulate(reportees_task.values(), headers='keys', tablefmt="grid")
             message = message + '```\n' + group_tab + '\n```\n'
         else:
             message = """### No Group tasks exist\n"""
